@@ -15,7 +15,33 @@ function Services() {
       try {
         setLoading(true);
         const response = await getServiceCosts(dateRange.startDate, dateRange.endDate);
-        setServiceCosts(response.data);
+
+        // 서비스명으로 데이터 합산
+        const aggregatedMap = new Map();
+        response.data.forEach(item => {
+          const serviceName = item.serviceName;
+          const cost = parseFloat(item.totalCost || item.cost || 0);
+
+          if (aggregatedMap.has(serviceName)) {
+            aggregatedMap.set(serviceName, aggregatedMap.get(serviceName) + cost);
+          } else {
+            aggregatedMap.set(serviceName, cost);
+          }
+        });
+
+        // 총 비용 계산
+        const total = Array.from(aggregatedMap.values()).reduce((sum, cost) => sum + cost, 0);
+
+        // 배열로 변환하고 비율 계산
+        const aggregatedData = Array.from(aggregatedMap.entries())
+          .map(([serviceName, totalCost]) => ({
+            serviceName,
+            totalCost,
+            percentage: total > 0 ? (totalCost / total) * 100 : 0
+          }))
+          .sort((a, b) => b.totalCost - a.totalCost); // 비용 높은 순으로 정렬
+
+        setServiceCosts(aggregatedData);
       } catch (error) {
         console.error('Failed to load service costs:', error);
       } finally {
