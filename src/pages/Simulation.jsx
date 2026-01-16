@@ -76,8 +76,28 @@ function Simulation() {
     if (currentScenario.items.length === 0) return;
     setCalculating(true);
     try {
-      const response = await calculateCost({ items: currentScenario.items });
-      setCalculationResult(response.data);
+      // 프론트엔드 필드명을 백엔드 API 형식으로 변환
+      const apiItems = currentScenario.items.map(item => ({
+        serviceCode: item.resourceType,
+        instanceType: item.instanceType,
+        region: item.region,
+        quantity: item.quantity,
+        usageHoursPerMonth: item.hoursPerMonth,
+        storageGb: item.storageGb
+      }));
+      const response = await calculateCost({ items: apiItems });
+
+      // 백엔드 응답을 프론트엔드 형식으로 변환
+      const data = response.data;
+      setCalculationResult({
+        totalMonthlyCost: data.projectedMonthlyCost,
+        totalYearlyCost: data.projectedMonthlyCost * 12,
+        itemCosts: data.itemCosts?.map(cost => ({
+          resourceType: cost.serviceCode,
+          instanceType: cost.instanceType,
+          monthlyCost: cost.monthlyCost
+        }))
+      });
     } catch (error) {
       console.error('Calculation failed:', error);
     } finally {
@@ -88,9 +108,21 @@ function Simulation() {
   const handleSaveScenario = async () => {
     if (!currentScenario.name || currentScenario.items.length === 0) return;
     try {
+      // 프론트엔드 필드명을 백엔드 API 형식으로 변환
+      const apiItems = currentScenario.items.map(item => ({
+        actionType: 'ADD',
+        serviceCode: item.resourceType,
+        resourceType: item.resourceType,
+        instanceType: item.instanceType,
+        region: item.region,
+        quantity: item.quantity,
+        usageHoursPerMonth: item.hoursPerMonth,
+        storageGb: item.storageGb
+      }));
       await createScenario({
-        ...currentScenario,
-        totalMonthlyCost: calculationResult?.totalMonthlyCost || 0
+        name: currentScenario.name,
+        description: currentScenario.description,
+        items: apiItems
       });
       fetchData();
       setCurrentScenario({ name: '', description: '', items: [] });
@@ -114,7 +146,7 @@ function Simulation() {
   const getComparisonData = () => {
     return scenarios.map(s => ({
       name: s.name,
-      monthlyCost: s.totalMonthlyCost || 0
+      monthlyCost: s.projectedMonthlyCost || s.totalMonthlyCost || 0
     }));
   };
 
@@ -302,7 +334,7 @@ function Simulation() {
                   <p className="scenario-desc">{scenario.description || 'No description'}</p>
                   <div className="scenario-details">
                     <span>{scenario.items?.length || 0} resources</span>
-                    <span className="scenario-cost">${scenario.totalMonthlyCost?.toFixed(2)}/mo</span>
+                    <span className="scenario-cost">${(scenario.projectedMonthlyCost || scenario.totalMonthlyCost)?.toFixed(2)}/mo</span>
                   </div>
                 </div>
               ))}
