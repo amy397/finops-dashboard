@@ -203,18 +203,25 @@ function Simulation() {
             <h2>Build Your Scenario</h2>
 
             <div className="scenario-info">
-              <input
-                type="text"
-                placeholder="Scenario Name"
-                value={currentScenario.name}
-                onChange={(e) => setCurrentScenario(prev => ({ ...prev, name: e.target.value }))}
-              />
-              <input
-                type="text"
-                placeholder="Description (optional)"
-                value={currentScenario.description}
-                onChange={(e) => setCurrentScenario(prev => ({ ...prev, description: e.target.value }))}
-              />
+              <div className="input-group">
+                <label>Scenario Name *</label>
+                <input
+                  type="text"
+                  placeholder="Enter scenario name to save"
+                  value={currentScenario.name}
+                  onChange={(e) => setCurrentScenario(prev => ({ ...prev, name: e.target.value }))}
+                  className={!currentScenario.name.trim() ? 'input-warning' : ''}
+                />
+              </div>
+              <div className="input-group">
+                <label>Description</label>
+                <input
+                  type="text"
+                  placeholder="Optional description"
+                  value={currentScenario.description}
+                  onChange={(e) => setCurrentScenario(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
             </div>
 
             <div className="add-resource">
@@ -345,8 +352,13 @@ function Simulation() {
                 ))}
               </div>
 
-              <button onClick={handleSaveScenario} className="save-btn" disabled={saving || !currentScenario.name.trim()}>
-                {saving ? 'Saving...' : 'Save Scenario'}
+              <button
+                onClick={handleSaveScenario}
+                className="save-btn"
+                disabled={saving || !currentScenario.name.trim()}
+                title={!currentScenario.name.trim() ? '시나리오 이름을 먼저 입력하세요' : ''}
+              >
+                {saving ? 'Saving...' : !currentScenario.name.trim() ? 'Enter Name to Save' : 'Save Scenario'}
               </button>
             </div>
           )}
@@ -402,7 +414,11 @@ function Simulation() {
         .section-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .section-card h2 { margin-top: 0; margin-bottom: 20px; }
         .scenario-info { display: flex; gap: 10px; margin-bottom: 20px; }
-        .scenario-info input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .scenario-info .input-group { flex: 1; }
+        .scenario-info .input-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #374151; }
+        .scenario-info input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .scenario-info input.input-warning { border-color: #f59e0b; background: #fffbeb; }
+        .scenario-info input:focus { outline: none; border-color: #1976d2; }
         .add-resource h3 { margin-bottom: 10px; font-size: 14px; color: #666; }
         .resource-form { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; background: #f9fafb; border-radius: 4px; }
         .resource-form select, .resource-form input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
