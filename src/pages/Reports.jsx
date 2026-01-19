@@ -7,13 +7,13 @@ function Reports() {
   const [generating, setGenerating] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [formData, setFormData] = useState({
-    reportType: 'COST_SUMMARY',
+    reportName: '',
+    reportType: 'DAILY',
     format: 'PDF',
     startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    groupBy: 'SERVICE',
-    includeCharts: true,
-    recipientEmails: ''
+    recipients: '',
+    sendEmail: false
   });
 
   useEffect(() => {
@@ -22,7 +22,7 @@ function Reports() {
 
   // 생성 중인 리포트가 있으면 5초마다 자동 새로고침
   useEffect(() => {
-    const hasGenerating = reports.some(r => r.status === 'GENERATING');
+    const hasGenerating = reports.some(r => r.generationStatus === 'GENERATING');
     if (hasGenerating) {
       const interval = setInterval(() => {
         fetchReports();
@@ -44,19 +44,30 @@ function Reports() {
 
   const handleGenerate = async (e) => {
     e.preventDefault();
+    if (!formData.reportName.trim()) {
+      alert('리포트 이름을 입력해주세요.');
+      return;
+    }
     setGenerating(true);
     try {
       const data = {
-        ...formData,
-        recipientEmails: formData.recipientEmails
-          ? formData.recipientEmails.split(',').map(e => e.trim())
-          : []
+        reportName: formData.reportName,
+        reportType: formData.reportType,
+        format: formData.format,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        recipients: formData.recipients
+          ? formData.recipients.split(',').map(r => r.trim()).filter(r => r)
+          : [],
+        sendEmail: formData.sendEmail
       };
       await generateReport(data);
       setShowGenerator(false);
+      setFormData(prev => ({ ...prev, reportName: '' }));
       fetchReports();
     } catch (error) {
       console.error('Failed to generate report:', error);
+      alert('리포트 생성에 실패했습니다.');
     } finally {
       setGenerating(false);
     }
@@ -81,8 +92,8 @@ function Reports() {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (generationStatus) => {
+    switch (generationStatus) {
       case 'COMPLETED': return '#10b981';
       case 'GENERATING': return '#f59e0b';
       case 'FAILED': return '#dc2626';
@@ -104,7 +115,7 @@ function Reports() {
       <div className="page-header">
         <div className="header-left">
           <h1>Cost Reports</h1>
-          {reports.some(r => r.status === 'GENERATING') && (
+          {reports.some(r => r.generationStatus === 'GENERATING') && (
             <span className="generating-indicator">Generating...</span>
           )}
         </div>
@@ -119,25 +130,25 @@ function Reports() {
       </div>
 
       <div className="report-types">
-        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'COST_SUMMARY' })); setShowGenerator(true); }}>
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'DAILY' })); setShowGenerator(true); }}>
           <div className="type-icon">📊</div>
-          <h3>Cost Summary</h3>
-          <p>Overview of costs by service, account, or tag</p>
+          <h3>Daily Report</h3>
+          <p>Daily cost breakdown and analysis</p>
         </div>
-        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'TREND_ANALYSIS' })); setShowGenerator(true); }}>
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'WEEKLY' })); setShowGenerator(true); }}>
           <div className="type-icon">📈</div>
-          <h3>Trend Analysis</h3>
-          <p>Cost trends and forecasts over time</p>
+          <h3>Weekly Report</h3>
+          <p>Weekly cost trends and summary</p>
         </div>
-        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'TAG_REPORT' })); setShowGenerator(true); }}>
-          <div className="type-icon">🏷️</div>
-          <h3>Tag Report</h3>
-          <p>Cost breakdown by tag key/value pairs</p>
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'MONTHLY' })); setShowGenerator(true); }}>
+          <div className="type-icon">📅</div>
+          <h3>Monthly Report</h3>
+          <p>Monthly cost overview and comparison</p>
         </div>
-        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'OPTIMIZATION' })); setShowGenerator(true); }}>
-          <div className="type-icon">💡</div>
-          <h3>Optimization</h3>
-          <p>Savings recommendations and opportunities</p>
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'CUSTOM' })); setShowGenerator(true); }}>
+          <div className="type-icon">⚙️</div>
+          <h3>Custom Report</h3>
+          <p>Custom date range cost report</p>
         </div>
       </div>
 
@@ -159,18 +170,18 @@ function Reports() {
           <tbody>
             {reports.map((report) => (
               <tr key={report.id}>
-                <td>{report.fileName}</td>
-                <td><span className="type-badge">{report.reportType?.replace('_', ' ')}</span></td>
+                <td>{report.reportName}</td>
+                <td><span className="type-badge">{report.reportType}</span></td>
                 <td><span className={`format-badge ${report.format?.toLowerCase()}`}>{report.format}</span></td>
-                <td>{report.startDate} ~ {report.endDate}</td>
-                <td>{formatFileSize(report.fileSize)}</td>
+                <td>{report.dateRangeStart} ~ {report.dateRangeEnd}</td>
+                <td>{formatFileSize(report.fileSizeBytes)}</td>
                 <td>
-                  <span className="status-dot" style={{ backgroundColor: getStatusColor(report.status) }}></span>
-                  {report.status}
+                  <span className="status-dot" style={{ backgroundColor: getStatusColor(report.generationStatus) }}></span>
+                  {report.generationStatus}
                 </td>
-                <td>{report.createdAt ? new Date(report.createdAt).toLocaleString() : '-'}</td>
+                <td>{report.generatedAt ? new Date(report.generatedAt).toLocaleString() : '-'}</td>
                 <td>
-                  {report.status === 'COMPLETED' && (
+                  {report.generationStatus === 'COMPLETED' && (
                     <button className="download-btn" onClick={() => handleDownload(report)}>
                       Download
                     </button>
@@ -191,16 +202,39 @@ function Reports() {
             <h2>Generate Cost Report</h2>
             <form onSubmit={handleGenerate}>
               <div className="form-group">
-                <label>Report Type *</label>
-                <select
-                  value={formData.reportType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, reportType: e.target.value }))}
-                >
-                  <option value="COST_SUMMARY">Cost Summary</option>
-                  <option value="TREND_ANALYSIS">Trend Analysis</option>
-                  <option value="TAG_REPORT">Tag Report</option>
-                  <option value="OPTIMIZATION">Optimization Report</option>
-                </select>
+                <label>Report Name *</label>
+                <input
+                  type="text"
+                  value={formData.reportName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, reportName: e.target.value }))}
+                  placeholder="e.g., January 2024 Cost Report"
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Report Type *</label>
+                  <select
+                    value={formData.reportType}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reportType: e.target.value }))}
+                  >
+                    <option value="DAILY">Daily</option>
+                    <option value="WEEKLY">Weekly</option>
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="CUSTOM">Custom</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Format *</label>
+                  <select
+                    value={formData.format}
+                    onChange={(e) => setFormData(prev => ({ ...prev, format: e.target.value }))}
+                  >
+                    <option value="PDF">PDF</option>
+                    <option value="EXCEL">Excel</option>
+                  </select>
+                </div>
               </div>
 
               <div className="form-row">
@@ -224,52 +258,29 @@ function Reports() {
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Format *</label>
-                  <select
-                    value={formData.format}
-                    onChange={(e) => setFormData(prev => ({ ...prev, format: e.target.value }))}
-                  >
-                    <option value="PDF">PDF</option>
-                    <option value="EXCEL">Excel</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Group By</label>
-                  <select
-                    value={formData.groupBy}
-                    onChange={(e) => setFormData(prev => ({ ...prev, groupBy: e.target.value }))}
-                  >
-                    <option value="SERVICE">Service</option>
-                    <option value="ACCOUNT">Account</option>
-                    <option value="REGION">Region</option>
-                    <option value="TAG">Tag</option>
-                  </select>
-                </div>
-              </div>
-
               <div className="form-group">
                 <label className="checkbox-label">
                   <input
                     type="checkbox"
-                    checked={formData.includeCharts}
-                    onChange={(e) => setFormData(prev => ({ ...prev, includeCharts: e.target.checked }))}
+                    checked={formData.sendEmail}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sendEmail: e.target.checked }))}
                   />
-                  Include charts and visualizations
+                  Send report via email
                 </label>
               </div>
 
-              <div className="form-group">
-                <label>Email Recipients (optional)</label>
-                <input
-                  type="text"
-                  value={formData.recipientEmails}
-                  onChange={(e) => setFormData(prev => ({ ...prev, recipientEmails: e.target.value }))}
-                  placeholder="email1@example.com, email2@example.com"
-                />
-                <small>Comma-separated email addresses to receive the report</small>
-              </div>
+              {formData.sendEmail && (
+                <div className="form-group">
+                  <label>Email Recipients</label>
+                  <input
+                    type="text"
+                    value={formData.recipients}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recipients: e.target.value }))}
+                    placeholder="email1@example.com, email2@example.com"
+                  />
+                  <small>Comma-separated email addresses</small>
+                </div>
+              )}
 
               <div className="modal-actions">
                 <button type="button" onClick={() => setShowGenerator(false)}>Cancel</button>
