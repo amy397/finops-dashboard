@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getScenarios, calculateCost, createScenario, deleteScenario, getPricingData } from '../api/simulationApi';
+import { getScenarios, getScenarioById, calculateCost, createScenario, deleteScenario, getPricingData } from '../api/simulationApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function Simulation() {
@@ -140,6 +140,31 @@ function Simulation() {
       } catch (error) {
         console.error('Failed to delete scenario:', error);
       }
+    }
+  };
+
+  const handleLoadScenario = async (id) => {
+    try {
+      const response = await getScenarioById(id);
+      const scenario = response.data;
+      // 백엔드 형식을 프론트엔드 형식으로 변환
+      const items = (scenario.items || []).map(item => ({
+        id: Date.now() + Math.random(),
+        resourceType: item.serviceCode || item.resourceType,
+        instanceType: item.instanceType,
+        region: item.region,
+        quantity: item.quantity,
+        hoursPerMonth: item.usageHoursPerMonth || 730,
+        storageGb: item.storageGb || 0
+      }));
+      setCurrentScenario({
+        name: scenario.name + ' (Copy)',
+        description: scenario.description || '',
+        items: items
+      });
+      setCalculationResult(null);
+    } catch (error) {
+      console.error('Failed to load scenario:', error);
     }
   };
 
@@ -329,7 +354,10 @@ function Simulation() {
                 <div key={scenario.id} className="scenario-card">
                   <div className="scenario-header">
                     <h3>{scenario.name}</h3>
-                    <button onClick={() => handleDeleteScenario(scenario.id)} className="delete-btn">×</button>
+                    <div className="scenario-actions">
+                      <button onClick={() => handleLoadScenario(scenario.id)} className="load-btn" title="Load scenario">↻</button>
+                      <button onClick={() => handleDeleteScenario(scenario.id)} className="delete-btn" title="Delete scenario">×</button>
+                    </div>
                   </div>
                   <p className="scenario-desc">{scenario.description || 'No description'}</p>
                   <div className="scenario-details">
@@ -387,7 +415,11 @@ function Simulation() {
         .scenario-card { padding: 15px; background: #f9fafb; border-radius: 8px; }
         .scenario-header { display: flex; justify-content: space-between; align-items: center; }
         .scenario-header h3 { margin: 0; font-size: 16px; }
-        .delete-btn { width: 24px; height: 24px; border: none; background: transparent; color: #dc2626; cursor: pointer; font-size: 18px; }
+        .scenario-actions { display: flex; gap: 4px; }
+        .load-btn { width: 28px; height: 28px; border: none; background: #e3f2fd; color: #1976d2; cursor: pointer; font-size: 16px; border-radius: 4px; }
+        .load-btn:hover { background: #bbdefb; }
+        .delete-btn { width: 28px; height: 28px; border: none; background: #fee2e2; color: #dc2626; cursor: pointer; font-size: 18px; border-radius: 4px; }
+        .delete-btn:hover { background: #fecaca; }
         .scenario-desc { color: #666; font-size: 13px; margin: 8px 0; }
         .scenario-details { display: flex; justify-content: space-between; font-size: 13px; }
         .scenario-cost { font-weight: 600; color: #1976d2; }

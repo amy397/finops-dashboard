@@ -20,6 +20,17 @@ function Reports() {
     fetchReports();
   }, []);
 
+  // 생성 중인 리포트가 있으면 5초마다 자동 새로고침
+  useEffect(() => {
+    const hasGenerating = reports.some(r => r.status === 'GENERATING');
+    if (hasGenerating) {
+      const interval = setInterval(() => {
+        fetchReports();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [reports]);
+
   const fetchReports = async () => {
     try {
       const response = await getReports();
@@ -91,29 +102,39 @@ function Reports() {
   return (
     <div className="reports-page">
       <div className="page-header">
-        <h1>Cost Reports</h1>
-        <button className="generate-btn" onClick={() => setShowGenerator(true)}>
-          + Generate Report
-        </button>
+        <div className="header-left">
+          <h1>Cost Reports</h1>
+          {reports.some(r => r.status === 'GENERATING') && (
+            <span className="generating-indicator">Generating...</span>
+          )}
+        </div>
+        <div className="header-actions">
+          <button className="refresh-btn" onClick={fetchReports} title="Refresh">
+            ↻
+          </button>
+          <button className="generate-btn" onClick={() => setShowGenerator(true)}>
+            + Generate Report
+          </button>
+        </div>
       </div>
 
       <div className="report-types">
-        <div className="type-card">
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'COST_SUMMARY' })); setShowGenerator(true); }}>
           <div className="type-icon">📊</div>
           <h3>Cost Summary</h3>
           <p>Overview of costs by service, account, or tag</p>
         </div>
-        <div className="type-card">
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'TREND_ANALYSIS' })); setShowGenerator(true); }}>
           <div className="type-icon">📈</div>
           <h3>Trend Analysis</h3>
           <p>Cost trends and forecasts over time</p>
         </div>
-        <div className="type-card">
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'TAG_REPORT' })); setShowGenerator(true); }}>
           <div className="type-icon">🏷️</div>
           <h3>Tag Report</h3>
           <p>Cost breakdown by tag key/value pairs</p>
         </div>
-        <div className="type-card">
+        <div className="type-card" onClick={() => { setFormData(prev => ({ ...prev, reportType: 'OPTIMIZATION' })); setShowGenerator(true); }}>
           <div className="type-icon">💡</div>
           <h3>Optimization</h3>
           <p>Savings recommendations and opportunities</p>
@@ -264,6 +285,13 @@ function Reports() {
       <style>{`
         .reports-page { padding: 20px; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-left h1 { margin: 0; }
+        .generating-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #fef3c7; color: #92400e; border-radius: 4px; font-size: 13px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .header-actions { display: flex; gap: 10px; }
+        .refresh-btn { width: 40px; height: 40px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+        .refresh-btn:hover { background: #e5e7eb; }
         .generate-btn { padding: 10px 20px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; }
         .report-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
         .type-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s; }
