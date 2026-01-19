@@ -105,8 +105,18 @@ function Simulation() {
     }
   };
 
+  const [saving, setSaving] = useState(false);
+
   const handleSaveScenario = async () => {
-    if (!currentScenario.name || currentScenario.items.length === 0) return;
+    if (!currentScenario.name.trim()) {
+      alert('시나리오 이름을 입력해주세요.');
+      return;
+    }
+    if (currentScenario.items.length === 0) {
+      alert('최소 하나의 리소스를 추가해주세요.');
+      return;
+    }
+    setSaving(true);
     try {
       // 프론트엔드 필드명을 백엔드 API 형식으로 변환
       const apiItems = currentScenario.items.map(item => ({
@@ -115,20 +125,24 @@ function Simulation() {
         resourceType: item.resourceType,
         instanceType: item.instanceType,
         region: item.region,
-        quantity: item.quantity,
-        usageHoursPerMonth: item.hoursPerMonth,
-        storageGb: item.storageGb
+        quantity: Number(item.quantity),
+        usageHoursPerMonth: Number(item.hoursPerMonth),
+        storageGb: Number(item.storageGb) || 0
       }));
       await createScenario({
-        name: currentScenario.name,
-        description: currentScenario.description,
+        name: currentScenario.name.trim(),
+        description: currentScenario.description || '',
         items: apiItems
       });
+      alert('시나리오가 저장되었습니다.');
       fetchData();
       setCurrentScenario({ name: '', description: '', items: [] });
       setCalculationResult(null);
     } catch (error) {
       console.error('Failed to save scenario:', error);
+      alert('시나리오 저장에 실패했습니다: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -297,6 +311,13 @@ function Simulation() {
               >
                 {calculating ? 'Calculating...' : 'Calculate Cost'}
               </button>
+              <button
+                onClick={handleSaveScenario}
+                disabled={saving || !currentScenario.name.trim() || currentScenario.items.length === 0}
+                className="save-scenario-btn"
+              >
+                {saving ? 'Saving...' : 'Save Scenario'}
+              </button>
             </div>
           </div>
 
@@ -324,8 +345,8 @@ function Simulation() {
                 ))}
               </div>
 
-              <button onClick={handleSaveScenario} className="save-btn" disabled={!currentScenario.name}>
-                Save Scenario
+              <button onClick={handleSaveScenario} className="save-btn" disabled={saving || !currentScenario.name.trim()}>
+                {saving ? 'Saving...' : 'Save Scenario'}
               </button>
             </div>
           )}
@@ -397,6 +418,8 @@ function Simulation() {
         .action-buttons { display: flex; gap: 10px; }
         .calculate-btn { flex: 1; padding: 12px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
         .calculate-btn:disabled { background: #ccc; }
+        .save-scenario-btn { flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .save-scenario-btn:disabled { background: #ccc; }
         .result-card { background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); color: white; }
         .result-card h2 { color: white; }
         .cost-summary { display: flex; gap: 20px; margin-bottom: 20px; }
